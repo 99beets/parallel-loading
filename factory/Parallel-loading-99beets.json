@@ -1,0 +1,9 @@
+{
+	"name": "Parallel-loading-99beets",
+	"location": "eastus",
+	"identity": {
+		"type": "SystemAssigned",
+		"principalId": "7843e9e1-0c97-4443-9646-d5ace9fc819f",
+		"tenantId": "32b55163-ab10-4932-8dfa-a5eab7bfcc80"
+	}
+}
