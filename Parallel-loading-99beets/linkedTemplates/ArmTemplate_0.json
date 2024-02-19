@@ -78,7 +78,7 @@
 						"value": "@dataset().DelimiterSymbol",
 						"type": "Expression"
 					},
-					"rowDelimiter": ",",
+					"rowDelimiter": ";",
 					"escapeChar": "\\",
 					"firstRowAsHeader": true,
 					"quoteChar": "\""
@@ -107,6 +107,7 @@
 				"type": "AzureSqlTable",
 				"schema": [],
 				"typeProperties": {
+					"schema": "dbo",
 					"table": {
 						"value": "@dataset().TableName",
 						"type": "Expression"
@@ -124,7 +125,7 @@
 			"properties": {
 				"activities": [
 					{
-						"name": "Lookup1",
+						"name": "Retrieve Metadata",
 						"type": "Lookup",
 						"dependsOn": [],
 						"policy": {
@@ -138,6 +139,7 @@
 						"typeProperties": {
 							"source": {
 								"type": "AzureSqlSource",
+								"sqlReaderQuery": "SELECT\n     b.[ObjectName]\n    ,FolderName = b.[ObjectValue]\n    ,SQLTable   = s.[ObjectValue]\n    ,Delimiter  = d.[ObjectValue]\nFROM [dbo].[Metadata_ADF] b\nJOIN [dbo].[Metadata_ADF] s ON b.[ObjectName] = s.[ObjectName]\nJOIN [dbo].[Metadata_ADF] d ON b.[ObjectName] = d.[ObjectName]\nWHERE   b.[SourceType] = 'BlobContainer'\n    AND s.[SourceType] = 'SQLTable'\n    AND d.[SourceType] = 'Delimiter';",
 								"queryTimeout": "02:00:00",
 								"partitionOption": "None"
 							},
@@ -150,6 +152,90 @@
 							},
 							"firstRowOnly": false
 						}
+					},
+					{
+						"name": "Loop for Metadata",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "Retrieve Metadata",
+								"dependencyConditions": [
+									"Completed"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Retrieve Metadata').output.value",
+								"type": "Expression"
+							},
+							"activities": [
+								{
+									"name": "Copy Blob to SQL",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "DelimitedTextSource",
+											"storeSettings": {
+												"type": "AzureBlobStorageReadSettings",
+												"recursive": true,
+												"wildcardFileName": "*.csv",
+												"enablePartitionDiscovery": false
+											},
+											"formatSettings": {
+												"type": "DelimitedTextReadSettings"
+											}
+										},
+										"sink": {
+											"type": "AzureSqlSink",
+											"preCopyScript": {
+												"value": "TRUNCATE TABLE dbo.@{item().SQLTable}",
+												"type": "Expression"
+											},
+											"disableMetricsCollection": false
+										},
+										"enableStaging": false,
+										"translator": {
+											"type": "TabularTranslator",
+											"typeConversion": true,
+											"typeConversionSettings": {
+												"allowDataTruncation": true,
+												"treatBooleanAsNumber": false
+											}
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "csv_movies_dynamic",
+											"type": "DatasetReference",
+											"parameters": {
+												"FolderName": "@{item().FolderName}",
+												"DelimiterSymbol": "@{item().Delimiter}"
+											}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "sql_movies_dynamic",
+											"type": "DatasetReference",
+											"parameters": {
+												"TableName": "@{item().SQLTable}"
+											}
+										}
+									]
+								}
+							]
+						}
 					}
 				],
 				"policy": {
@@ -159,7 +245,8 @@
 				"lastPublishTime": "2024-02-17T15:59:11Z"
 			},
 			"dependsOn": [
-				"[concat(variables('factoryId'), '/datasets/sql_movies_dynamic')]"
+				"[concat(variables('factoryId'), '/datasets/sql_movies_dynamic')]",
+				"[concat(variables('factoryId'), '/datasets/csv_movies_dynamic')]"
 			]
 		}
 	]
