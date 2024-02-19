@@ -202,6 +202,8 @@
 												"value": "TRUNCATE TABLE dbo.@{item().SQLTable}",
 												"type": "Expression"
 											},
+											"writeBehavior": "insert",
+											"sqlWriterUseTableLock": false,
 											"disableMetricsCollection": false
 										},
 										"enableStaging": false,
