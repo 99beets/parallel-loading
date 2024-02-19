@@ -20,13 +20,6 @@
 						"queryTimeout": "02:00:00",
 						"partitionOption": "None"
 					},
-					"dataset": {
-						"referenceName": "sql_movies_dynamic",
-						"type": "DatasetReference",
-						"parameters": {
-							"TableName": "_notSet"
-						}
-					},
 					"firstRowOnly": false
 				}
 			}
